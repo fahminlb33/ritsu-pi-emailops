@@ -1,0 +1,6 @@
+@RitsuPi.EmailOps_HostAddress = http://localhost:5056
+
+GET {{RitsuPi.EmailOps_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
