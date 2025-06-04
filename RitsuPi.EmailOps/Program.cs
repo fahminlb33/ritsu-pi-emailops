@@ -6,6 +6,7 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Trace;
 using PostmarkDotNet.Webhooks;
 using RitsuPi.EmailOps.Domain.Handlers;
+using RitsuPi.EmailOps.Infrastructure.Authentication;
 using RitsuPi.EmailOps.Infrastructure.Configuration;
 using RitsuPi.EmailOps.Infrastructure.Database;
 using RitsuPi.EmailOps.Infrastructure.Kernels.Filters;
@@ -20,6 +21,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<GeminiConfig>(builder.Configuration.GetSection("Gemini"));
 builder.Services.Configure<PostmarkConfig>(builder.Configuration.GetSection("Postmark"));
 builder.Services.Configure<PrometheusConfig>(builder.Configuration.GetSection("Prometheus"));
+
+// Authentication
+builder.Services.AddAuthentication()
+    .AddScheme<BasicAuthenticationOptions, BasicAuthenticationHandler>(BasicAuthenticationHandler.Scheme, o =>
+    {
+        o.Username = builder.Configuration["Authentication:Username"];
+        o.Password = builder.Configuration["Authentication:Password"];
+    });
+builder.Services.AddAuthorization();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -71,6 +81,9 @@ builder.Services.AddScoped<IInboundEmailHandler, InboundEmailHandler>();
 // ----- Configure the HTTP request pipeline
 var app = builder.Build();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -120,6 +133,7 @@ app.MapPost("/api/inbound",
         await handler.Handle(message, ct);
         return Results.NoContent();
     })
+    .RequireAuthorization()
     .WithTags("Postmark");
 
 app.Run();
